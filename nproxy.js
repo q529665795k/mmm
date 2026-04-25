@@ -1,66 +1,95 @@
-const USER = "longge";
-const PASS = "longge";
+// Worker 启动时自动生成一个随机 UUID
+let UUID = crypto.randomUUID();
 
 export default {
   async fetch(request) {
     const url = new URL(request.url);
+    const host = url.host;
 
-    // 根路径返回节点信息
+    // 访问根路径，自动生成节点信息
     if (url.pathname === "/") {
-      return new Response(`
-===== 代理节点信息 =====
-类型: HTTP
-地址: ${url.host}
+      const nodeInfo = `
+===== V2RayNG 节点信息 =====
+协议: VMess
+地址: ${host}
 端口: 443
+UUID: ${UUID}
+额外ID(alterId): 0
+加密方式: auto
+传输协议: ws
+Host: ${host}
+路径: /ws
 TLS: 开启
-用户名: ${USER}
-密码: ${PASS}
+SNI: ${host}
 =========================
-      `.trim(), {
+复制下面的 JSON 直接导入 V2RayNG:
+{
+  "v": "2",
+  "ps": "CF-WS-Proxy",
+  "add": "${host}",
+  "port": "443",
+  "id": "${UUID}",
+  "aid": "0",
+  "scy": "auto",
+  "net": "ws",
+  "type": "none",
+  "host": "${host}",
+  "path": "/ws",
+  "tls": "tls",
+  "sni": "${host}"
+}
+`;
+      return new Response(nodeInfo.trim(), {
         headers: { "Content-Type": "text/plain; charset=utf-8" }
       });
     }
 
-    // 处理 CONNECT 隧道请求（关键！V2RayNG 必须用这个）
-    if (request.method === "CONNECT") {
-      const auth = request.headers.get("Proxy-Authorization");
-      if (!auth || !auth.startsWith("Basic ")) {
-        return new Response("Proxy Auth Required", { status: 407 });
+    // WebSocket 代理核心逻辑
+    if (url.pathname === "/ws") {
+      if (request.headers.get("Upgrade") !== "websocket") {
+        return new Response("Bad Request: Need WebSocket", { status: 400 });
       }
 
-      const [user, pass] = atob(auth.slice(6)).split(":");
-      if (user !== USER || pass !== PASS) {
-        return new Response("Unauthorized", { status: 403 });
-      }
+      const [client, server] = Object.values(new WebSocketPair());
+      server.accept();
 
-      const { port } = new URL(`https://${url.pathname.slice(1)}`);
-      const targetPort = port || 443;
-      const [targetHost, targetPortStr] = url.pathname.slice(1).split(":");
-      const finalPort = targetPortStr ? parseInt(targetPortStr) : targetPort;
+      server.addEventListener("message", async (event) => {
+        try {
+          const decoder = new TextDecoder();
+          const msg = JSON.parse(decoder.decode(event.data));
+          const targetHost = msg.host;
+          const targetPort = msg.port || 443;
 
-      const { readable, writable } = new TransformStream();
-      const socket = new WebSocket(`wss://${targetHost}:${finalPort}`, {
-        headers: { "Host": targetHost }
+          const targetSocket = new WebSocket(`wss://${targetHost}:${targetPort}`);
+          targetSocket.addEventListener("open", () => {
+            targetSocket.addEventListener("message", (e) => {
+              server.send(e.data);
+            });
+          });
+
+          server.addEventListener("message", (e) => {
+            if (targetSocket.readyState === WebSocket.OPEN) {
+              targetSocket.send(e.data);
+            }
+          });
+
+          targetSocket.addEventListener("close", () => server.close());
+          targetSocket.addEventListener("error", () => server.close());
+        } catch (err) {
+          server.close();
+        }
       });
 
       return new Response(null, {
-        status: 200,
-        headers: { "Connection": "upgrade", "Upgrade": "websocket" },
-        body: readable
+        status: 101,
+        headers: {
+          "Upgrade": "websocket",
+          "Connection": "Upgrade"
+        },
+        webSocket: client
       });
     }
 
-    // 处理普通 HTTP/HTTPS 请求
-    const modifiedHeaders = new Headers(request.headers);
-    modifiedHeaders.delete("Proxy-Authorization");
-    modifiedHeaders.delete("Origin");
-    modifiedHeaders.delete("Referer");
-
-    return fetch(request, {
-      method: request.method,
-      headers: modifiedHeaders,
-      body: request.body,
-      redirect: "follow"
-    });
+    return new Response("404 Not Found", { status: 404 });
   }
 };
