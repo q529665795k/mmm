@@ -22,11 +22,9 @@ SNI: ${host}
       if (req.headers.get("Upgrade") !== "websocket") {
         return new Response("Bad Request", { status: 400 });
       }
-
-      // 这是关键！用 WebSocketPair 正确握手
-      const [client, server] = new WebSocketPair();
+      const pair = new WebSocketPair();
+      const [client, server] = Object.values(pair);
       server.accept();
-
       return new Response(null, {
         status: 101,
         headers: {
