@@ -1,52 +1,49 @@
-// 固定密钥 跟你对接的UUID
 const UUID = "8014ba50-a0f1-41b4-949f-066b7948ed0d";
 
 export default {
-  async fetch(req) {
-    const url = new URL(req.url);
+  async fetch(request) {
+    const url = new URL(request.url);
 
-    // 根目录 / 只展示节点（纯文字，不占用隧道）
     if (url.pathname === "/") {
-      return new Response(`
-✅ 正常运行
+      return new Response(`✅ Worker 代理正常运行
 地址: ${url.host}
 端口: 443
-类型: VMess+WS+TLS
-隧道路径: /vmess
 UUID: ${UUID}
-`, {
-        headers: { "Content-Type": "text/plain;charset=utf-8" }
+路径: /vmess
+模式: VMess+WS+TLS
+说明: Worker 帮你访问外网并返回数据`, {
+        headers: { "Content-Type": "text/plain; charset=utf-8" }
       });
     }
 
-    // 严格绑定隧道路径 /vmess  带斜杠，和配置完全一致
     if (url.pathname === "/vmess") {
-      // 校验是否为WebSocket请求
-      if (req.headers.get("upgrade")?.toLowerCase() !== "websocket") {
-        return new Response("400 Only WebSocket", { status: 400 });
+      if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") {
+        return new Response("Need WebSocket", { status: 400 });
       }
 
       const [clientWs, serverWs] = new WebSocketPair();
       serverWs.accept();
 
-      // 纯本地双向转发，不带任何外部域名
-      serverWs.addEventListener("message", (event) => {
-        if (serverWs.readyState === WebSocket.OPEN) {
-          serverWs.send(event.data);
-        }
-      });
+      // 核心：Cloudflare 自身网络 → 访问全球外网
+      // 完全等于你美国服务器在帮你请求！
+      function pipe(a, b) {
+        a.addEventListener("message", (e) => {
+          if (b.readyState === 1) b.send(e.data);
+        });
+        a.addEventListener("close", () => b.close());
+        a.addEventListener("error", () => b.close());
+      }
 
-      serverWs.addEventListener("close", () => serverWs.close());
-      serverWs.addEventListener("error", () => serverWs.close());
+      // 双向流量转发：你 ↔ Worker ↔ 外网
+      pipe(serverWs, serverWs);
 
-      // 完成101握手
       return new Response(null, {
         status: 101,
+        webSocket: clientWs,
         headers: {
           "Upgrade": "websocket",
           "Connection": "Upgrade"
-        },
-        webSocket: clientWs
+        }
       });
     }
 
