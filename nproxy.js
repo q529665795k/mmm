@@ -1,4 +1,4 @@
-const PROXY_USER = "longge";
+ const PROXY_USER = "longge";
  const PROXY_PASS = "123456";
 
 export default {
