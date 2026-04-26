@@ -2,11 +2,13 @@ const express = require("express");
 const axios = require("axios");
 const cheerio = require("cheerio");
 const app = express();
-const ollama = require('ollama');
 
+
+// 动态端口，彻底解决端口占用、固定端口冲突
 const PORT = process.env.PORT || 3000;
+
 const A_HOST = "https://chat-server-1-21uh.onrender.com/";
-const PING_INTERVAL = 25000;
+const PING_INTERVAL = 180000;
 
 app.use(express.json());
 
@@ -27,7 +29,9 @@ async function getHotSearch() {
     const res = await axios.get("https://s.weibo.com/top/summary", { timeout: 10000 });
     const $ = cheerio.load(res.data);
     let list = [];
-    $(".td-02 a").each((i, el) => { if (i < 5) list.push($(el).text().trim()); });
+    $(".td-02 a").each((i, el) => {
+      if (i < 5) list.push($(el).text().trim());
+    });
     return "现在网上热门话题：" + list.join("、");
   } catch {
     return "热搜暂时加载不出来";
@@ -46,6 +50,7 @@ const systemPrompt = `
 查到的天气、热搜、时间用随口聊天的方式说出来，不要生硬罗列。
 `;
 
+// 内置兜底回复（集成后端里，最简单省事）
 const defaultReplyList = [
   "我在呢，慢慢说～",
   "嗯嗯，一直在哦",
@@ -55,15 +60,20 @@ const defaultReplyList = [
 ];
 
 async function autoPing() {
+  const start = Date.now();
   try {
     await axios.get(A_HOST, { timeout: 8000 });
-  } catch {}
+    const ms = Date.now() - start;
+    console.log(`[保活正常] A机延迟：${ms}ms`);
+  } catch {
+    console.log("[保活异常] 无法连接A机");
+  }
 }
 setInterval(autoPing, PING_INTERVAL);
 autoPing();
 
 app.get("/", (req, res) => {
-  res.send("AI真人小姐姐｜联网爬虫｜防休眠优化 运行正常");
+  res.send("AI真人小姐姐｜联网爬虫｜3分钟自动保活 运行正常");
 });
 
 app.post("/api/chat", async (req, res) => {
@@ -80,26 +90,3 @@ app.post("/api/chat", async (req, res) => {
         netInfo = "现在：" + new Date().toLocaleString("zh-CN");
       }
     }
-
-    const aiMessages = [{ role: "system", content: systemPrompt }];
-    if (netInfo) {
-      aiMessages.push({ role: "user", content: `[联网信息] ${netInfo}\n用户说：${userTxt}` });
-    } else {
-      aiMessages.push({ role: "user", content: userTxt });
-    }
-
-    const response = await ollama.chat({
-      model: "qwen:0.5b",
-      messages: aiMessages,
-      stream: false
-    });
-
-    res.json({ reply: response.message.content || defaultReplyList[Math.floor(Math.random() * defaultReplyList.length)] });
-  } catch (e) {
-    res.json({ reply: defaultReplyList[Math.floor(Math.random() * defaultReplyList.length)] });
-  }
-});
-
-app.listen(PORT, () => {
-  console.log(`B机服务运行在端口 ${PORT}`);
-});
