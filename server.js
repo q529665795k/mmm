@@ -5,7 +5,7 @@ const app = express();
 // 动态端口，彻底解决端口占用、固定端口冲突
 const PORT = process.env.PORT || 3000;
 
-const A_HOST = "https://im6.qzz.io";
+const A_HOST = "https://chat-server-1-21uh.onrender.com/";
 const PING_INTERVAL = 180000;
 
 app.use(express.json());
