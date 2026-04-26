@@ -1,40 +1,25 @@
 #!/bin/bash
 set -e
 
-# ========== 1. 自动找Render有权限的目录（彻底绕开ROOT） ==========
-if [ -w "$HOME/.local/bin" ]; then
-    BIN_DIR="$HOME/.local/bin"
-elif [ -w "/opt/render/.local/bin" ]; then
-    BIN_DIR="/opt/render/.local/bin"
-else
-    BIN_DIR="./bin"
-fi
+# 1. 固定Render有权限的用户目录（绝对不报权限错）
+BIN_DIR="$HOME/.local/bin"
 mkdir -p "$BIN_DIR"
 export PATH="$BIN_DIR:$PATH"
 
-# ========== 2. 无ROOT安装Ollama（只装在你的用户目录） ==========
-ARCH=$(uname -m)
-if [ "$ARCH" = "x86_64" ]; then
-    curl -fsSL https://ollama.com/download/ollama-linux-amd64 -o "$BIN_DIR/ollama"
-else
-    curl -fsSL https://ollama.com/download/ollama-linux-arm64 -o "$BIN_DIR/ollama"
-fi
+# 2. 下载Ollama本体（官方正确链接）
+curl -fsSL https://ollama.com/download/ollama-linux-amd64 -o "$BIN_DIR/ollama"
 chmod +x "$BIN_DIR/ollama"
 
-# ========== 3. 全网开放配置 ==========
+# 3. 开放外网访问
 export OLLAMA_HOST=0.0.0.0
 export OLLAMA_ORIGINS=*
-export OLLAMA_MODELS="$HOME/.ollama/models"
 
-# ========== 4. 后台启动Ollama ==========
+# 4. 启动Ollama服务
 "$BIN_DIR/ollama" serve &
 sleep 15
 
-# ========== 5. 精准下载你指定的：gemma:2b-instruct-v1.1-q2_K ==========
+# 5. 【唯一核心】下载你确认过能用的这个模型
 "$BIN_DIR/ollama" pull gemma:2b-instruct-v1.1-q2_K
 
-# ========== 6. 创建你的girl模型 ==========
-"$BIN_DIR/ollama" create girl -f girl.Modelfile
-
-# 保活不退出
+# 保活，防止Render关闭
 tail -f /dev/null
