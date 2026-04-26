@@ -1,1 +1,1 @@
-cd /opt/render/project/src && export OLLAMA_MODELS=$(pwd)/ollama-models && ./ollama serve
+cd /opt/render/project/src && chmod +x ./ollama && export OLLAMA_MODELS=$(pwd)/ollama-models && ./ollama serve
