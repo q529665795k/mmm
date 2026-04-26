@@ -1,44 +1,30 @@
 #!/bin/bash
+set -e
 
-# ===================== 1. 自动查找普通用户可用的安装路径 =====================
-# 优先找系统默认PATH里有权限的文件夹
-POSSIBLE_PATHS=(
-  "$HOME/.local/bin"
-  "/usr/local/bin"
-  "$HOME/bin"
-  "/tmp/bin"
-)
+# 1. 锁定Render普通用户唯一有权限的路径（就是你截图里的）
+BIN_DIR="/opt/render/.local/bin"
+mkdir -p "$BIN_DIR"
+export PATH="$BIN_DIR:$PATH"
 
-# 创建临时可用目录
-mkdir -p /tmp/bin
-# 遍历找第一个能写、且在PATH里的路径
-INSTALL_PATH=""
-for p in "${POSSIBLE_PATHS[@]}"; do
-  mkdir -p "$p"
-  if [ -w "$p" ]; then
-    INSTALL_PATH="$p"
-    break
-  fi
-done
+# 2. 无root安装Ollama（直接下载二进制，不碰系统目录）
+ARCH=$(uname -m)
+if [ "$ARCH" = "x86_64" ]; then
+  curl -sL https://ollama.com/download/ollama-linux-amd64 -o "$BIN_DIR/ollama"
+else
+  curl -sL https://ollama.com/download/ollama-linux-arm64 -o "$BIN_DIR/ollama"
+fi
+chmod +x "$BIN_DIR/ollama"
 
-# 把找到的路径加入当前脚本环境，永久生效
-export PATH="$INSTALL_PATH:$PATH"
-echo "✅ 已自动找到可用安装路径：$INSTALL_PATH"
-
-# ===================== 2. 安装Ollama到找到的路径 =====================
-# 下载官方二进制文件，直接放到可用路径（不碰root）
-curl -fsSL https://ollama.com/install.sh | sh -s -- --install-dir "$INSTALL_PATH"
-
-# ===================== 3. 全网访问配置 =====================
+# 3. 全网开放配置
 export OLLAMA_HOST=0.0.0.0
 export OLLAMA_ORIGINS=*
 
-# ===================== 4. 启动Ollama =====================
+# 4. 后台启动Ollama
 ollama serve &
-sleep 8
+sleep 10
 
-# ===================== 5. 加载模型 =====================
+# 5. 创建模型（不会再报找不到命令）
 ollama create girl -f girl.Modelfile
 
-# 保持容器存活
+# 保持Render容器不退出
 tail -f /dev/null
