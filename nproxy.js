@@ -1,12 +1,27 @@
 export default {
-  async fetch(req) {
-    const upHost = "shuttle.proxy.rlwy.net:29613";
+  async fetch(request, env, ctx) {
+    const targetHost = "shuttle.proxy.rlwy.net:29613";
     const authStr = "long:123456";
     const auth = "Basic " + btoa(authStr);
-    const u = new URL(req.url);
-    u.host = upHost;
-    const newReq = new Request(u, req);
-    newReq.headers.set("Proxy-Authorization", auth);
-    return fetch(newReq);
+
+    // 只处理 GET/POST 等常规请求，不处理 CONNECT
+    if (request.method === "CONNECT") {
+      return new Response("Not Implemented", { status: 501 });
+    }
+
+    const newUrl = new URL(request.url);
+    newUrl.host = targetHost;
+
+    const newHeaders = new Headers(request.headers);
+    newHeaders.set("Proxy-Authorization", auth);
+
+    const newRequest = new Request(newUrl, {
+      method: request.method,
+      headers: newHeaders,
+      body: request.body,
+      redirect: "follow"
+    });
+
+    return fetch(newRequest);
   }
 };
