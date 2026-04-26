@@ -15,7 +15,7 @@ async function getWeather(city = "南宁") {
     const $ = cheerio.load(res.data);
     const temp = $(".temp").text().trim() || "未知";
     const weather = $(".wea").text().trim() || "未知";
-    return `${city现在${weather}，气温${temp}℃`;
+    return `${city}现在${weather}，气温${temp}℃`;
   } catch {
     return "天气暂时查不到哦";
   }
@@ -82,8 +82,7 @@ app.post("/api/chat", async (req, res) => {
     const content = netInfo ? `实时信息：${netInfo}\n对方：${userTxt}` : userTxt;
 
     const aiRes = await axios.post("http://127.0.0.1:11434/api/chat", {
-      model: "qwen2.5:1.8b"
-
+      model: "qwen:0.5b",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content }
@@ -94,8 +93,13 @@ app.post("/api/chat", async (req, res) => {
     const reply = aiRes.data?.message?.content || "我在呢～";
     res.json({ reply });
   } catch (err) {
+    console.error(err);
     res.json({ reply: "刚刚有点卡，你再说一遍呗" });
   }
+});
+
+app.listen(PORT, () => {
+  console.log(`B机服务启动成功，端口：${PORT}`);
 });
 
 app.listen(PORT, () => {
