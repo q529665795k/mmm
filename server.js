@@ -2,14 +2,10 @@ const express = require("express");
 const axios = require("axios");
 const cheerio = require("cheerio");
 const app = express();
-
-
 // 动态端口，彻底解决端口占用、固定端口冲突
 const PORT = process.env.PORT || 3000;
-
 const A_HOST = "https://chat-server-1-21uh.onrender.com/";
 const PING_INTERVAL = 180000;
-
 app.use(express.json());
 
 async function getWeather(city = "南宁") {
@@ -50,7 +46,6 @@ const systemPrompt = `
 查到的天气、热搜、时间用随口聊天的方式说出来，不要生硬罗列。
 `;
 
-// 内置兜底回复（集成后端里，最简单省事）
 const defaultReplyList = [
   "我在呢，慢慢说～",
   "嗯嗯，一直在哦",
@@ -91,8 +86,17 @@ app.post("/api/chat", async (req, res) => {
       }
     }
 
-    // 这里是你原来的AI调用逻辑位置，我不动，只补全语法
-    const reply = netInfo || defaultReplyList[Math.floor(Math.random() * defaultReplyList.length)];
+    // -------------------------- OLLAMA 调用已加入（0.5接口）--------------------------
+    const ollamaRes = await axios.post("http://127.0.0.1:11434/api/chat", {
+      model: "qwen:0.5b",
+      messages: [
+        { role: "system", content: systemPrompt + "\n" + netInfo },
+        { role: "user", content: userTxt }
+      ],
+      stream: false
+    });
+
+    const reply = ollamaRes.data.message?.content || defaultReplyList[Math.floor(Math.random() * defaultReplyList.length)];
     res.json({ reply });
 
   } catch (err) {
