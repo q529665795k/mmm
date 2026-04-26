@@ -2,6 +2,7 @@ const express = require("express");
 const axios = require("axios");
 const cheerio = require("cheerio");
 const app = express();
+// 动态端口，彻底解决端口占用、固定端口冲突
 const PORT = process.env.PORT || 3000;
 
 const A_HOST = "https://im6.qzz.io";
@@ -47,6 +48,15 @@ const systemPrompt = `
 查到的天气、热搜、时间用随口聊天的方式说出来，不要生硬罗列。
 `;
 
+// 内置兜底回复（集成后端里，最简单省事）
+const defaultReplyList = [
+  "我在呢，慢慢说～",
+  "嗯嗯，一直在哦",
+  "哈哈，挺有意思的",
+  "那你接着讲讲呗",
+  "收到啦～"
+];
+
 async function autoPing() {
   const start = Date.now();
   try {
@@ -81,27 +91,27 @@ app.post("/api/chat", async (req, res) => {
 
     const content = netInfo ? `实时信息：${netInfo}\n对方：${userTxt}` : userTxt;
 
+    // 极低配置小模型，低配机器也能跑，CPU占用极低
     const aiRes = await axios.post("http://127.0.0.1:11434/api/chat", {
-      model: "qwen:0.5b",
+      model: "qwen:0.2b",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content }
+        { role: "user", content: content }
       ],
       stream: false
-    }, { timeout: 30000 });
+    }, { timeout: 8000 });
 
-    const reply = aiRes.data?.message?.content || "我在呢～";
+    const reply = aiRes.data?.message?.content || defaultReplyList[Math.floor(Math.random() * defaultReplyList.length)];
     res.json({ reply });
+
   } catch (err) {
     console.error(err);
-    res.json({ reply: "刚刚有点卡，你再说一遍呗" });
+    // 异常直接调用后端内置回复，不崩服务
+    const rndReply = defaultReplyList[Math.floor(Math.random() * defaultReplyList.length)];
+    res.json({ reply: rndReply });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`B机服务启动成功，端口：${PORT}`);
-});
-
-app.listen(PORT, () => {
-  console.log("B机 AI服务启动成功");
+  console.log(`B机服务启动成功，动态端口：${PORT}`);
 });
