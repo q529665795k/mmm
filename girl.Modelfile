@@ -1,4 +1,4 @@
-FROM tinyllama:1.1b-chat-v0.4-q2_K
+FROM tinyllama:qwen2:0.5b
 PARAMETER temperature 1
 PARAMETER top_p 1
 PARAMETER num_ctx 2048
