@@ -2,36 +2,24 @@ const express = require("express");
 const axios = require("axios");
 const cheerio = require("cheerio");
 const app = express();
-const ollama = require('ollama'); // 必须加上，不然会报错
+const ollama = require('ollama');
 
-// --- 给监控面板用的全局状态变量（第一步）---
 let modelLoaded = false;
 let totalChatCount = 0;
 let errorCount = 0;
 
-// Ollama 模型懒加载标记
 ollama.chat({ model: 'qwen:0.5b', messages: [{ role: 'user', content: '测试' }] })
-  .then(() => {
-    modelLoaded = true;
-    console.log("✅ AI模型已加载完成");
-  })
-  .catch(err => {
-    errorCount++;
-    console.error("❌ 模型加载失败：", err);
-  });
+  .then(() => { modelLoaded = true; console.log("✅ AI模型已加载完成"); })
+  .catch(err => { errorCount++; console.error("❌ 模型加载失败：", err); });
 
-// 动态端口，彻底解决端口占用、固定端口冲突
 const PORT = process.env.PORT || 3000;
-
 const A_HOST = "https://chat-server-1-21uh.onrender.com/";
 const PING_INTERVAL = 180000;
 
 app.use(express.json());
 
-// --- 监控面板状态上报接口（第二步，加在这里）---
 app.get('/api/status', (req, res) => {
   const memUsage = process.memoryUsage();
-  
   res.json({
     running: true,
     aiServiceStatus: "running",
@@ -68,9 +56,7 @@ async function getHotSearch() {
     const res = await axios.get("https://s.weibo.com/top/summary", { timeout: 10000 });
     const $ = cheerio.load(res.data);
     let list = [];
-    $(".td-02 a").each((i, el) => {
-      if (i < 5) list.push($(el).text().trim());
-    });
+    $(".td-02 a").each((i, el) => { if (i < 5) list.push($(el).text().trim()); });
     return "现在网上热门话题：" + list.join("、");
   } catch {
     return "热搜暂时加载不出来";
@@ -89,7 +75,6 @@ const systemPrompt = `
 查到的天气、热搜、时间用随口聊天的方式说出来，不要生硬罗列。
 `;
 
-// 内置兜底回复（集成后端里，最简单省事）
 const defaultReplyList = [
   "我在呢，慢慢说～",
   "嗯嗯，一直在哦",
@@ -130,7 +115,6 @@ app.post("/api/chat", async (req, res) => {
       }
     }
 
-    // --- 第三步：给聊天接口加上计数 ---
     totalChatCount++;
 
     const aiMessages = [{ role: "system", content: systemPrompt }];
