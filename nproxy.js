@@ -1,16 +1,17 @@
 export default {
   async fetch(request, env, ctx) {
-    const targetHost = "shuttle.proxy.rlwy.net:29613";
+    // 你的 Railway 节点是纯 HTTP，所以协议要写 http://
+    const upHost = "shuttle.proxy.rlwy.net:29613";
     const authStr = "long:123456";
     const auth = "Basic " + btoa(authStr);
 
-    // 只处理 GET/POST 等常规请求，不处理 CONNECT
+    // 拒绝 CONNECT 请求（因为 Worker 不支持）
     if (request.method === "CONNECT") {
-      return new Response("Not Implemented", { status: 501 });
+      return new Response("CONNECT method not supported", { status: 501 });
     }
 
-    const newUrl = new URL(request.url);
-    newUrl.host = targetHost;
+    // 强制用 http:// 去连你的节点
+    const newUrl = new URL(`http://${upHost}${new URL(request.url).pathname}${new URL(request.url).search}`);
 
     const newHeaders = new Headers(request.headers);
     newHeaders.set("Proxy-Authorization", auth);
