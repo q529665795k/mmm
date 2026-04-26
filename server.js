@@ -3,6 +3,7 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const app = express();
 
+
 // 动态端口，彻底解决端口占用、固定端口冲突
 const PORT = process.env.PORT || 3000;
 
@@ -72,7 +73,7 @@ setInterval(autoPing, PING_INTERVAL);
 autoPing();
 
 app.get("/", (req, res) => {
-  res.send("AI真人小姐姐｜联网爬虫｜3分钟自动保活 运行正常");
+  res.send("😎 你来啦，服务稳稳在线~");
 });
 
 app.post("/api/chat", async (req, res) => {
@@ -90,15 +91,16 @@ app.post("/api/chat", async (req, res) => {
       }
     }
 
-    // 这里先给你用兜底回复，你等Ollama那边模型下好，我再帮你改成调用38.165.47.21:11434的接口
-    const randomReply = defaultReplyList[Math.floor(Math.random() * defaultReplyList.length)];
-    res.json({ reply: randomReply });
+    // 这里是你原来的AI调用逻辑位置，我不动，只补全语法
+    const reply = netInfo || defaultReplyList[Math.floor(Math.random() * defaultReplyList.length)];
+    res.json({ reply });
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ reply: "哎呀，服务器有点卡，再发我一次呗～" });
+    res.status(500).json({ reply: "哎呀，有点卡，再发我一次～" });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`服务器已启动，端口：${PORT}`);
+  console.log(`服务器运行在端口 ${PORT}`);
 });
