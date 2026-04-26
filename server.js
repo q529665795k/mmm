@@ -4,40 +4,11 @@ const cheerio = require("cheerio");
 const app = express();
 const ollama = require('ollama');
 
-let modelLoaded = false;
-let totalChatCount = 0;
-let errorCount = 0;
-
-ollama.chat({ model: 'qwen:0.5b', messages: [{ role: 'user', content: '测试' }] })
-  .then(() => { modelLoaded = true; console.log("✅ AI模型已加载完成"); })
-  .catch(err => { errorCount++; console.error("❌ 模型加载失败：", err); });
-
 const PORT = process.env.PORT || 3000;
 const A_HOST = "https://chat-server-1-21uh.onrender.com/";
-const PING_INTERVAL = 180000;
+const PING_INTERVAL = 25000;
 
 app.use(express.json());
-
-app.get('/api/status', (req, res) => {
-  const memUsage = process.memoryUsage();
-  res.json({
-    running: true,
-    aiServiceStatus: "running",
-    aiModelLoaded: modelLoaded,
-    modelNameVersion: "qwen:0.5b",
-    inferenceDelay: "--",
-    todayChatCount: totalChatCount,
-    contextLimit: "默认限制",
-    modelMemoryUsage: (memUsage.heapUsed / 1024 / 1024).toFixed(2) + " MB",
-    crossServerStatus: "互通正常",
-    backupServiceStatus: "已开启",
-    cronStatus: "正常待命",
-    apiAccessCount: totalChatCount,
-    errorCount: errorCount,
-    systemLoad: "--",
-    cacheStatus: "正常"
-  });
-});
 
 async function getWeather(city = "南宁") {
   try {
@@ -84,20 +55,15 @@ const defaultReplyList = [
 ];
 
 async function autoPing() {
-  const start = Date.now();
   try {
     await axios.get(A_HOST, { timeout: 8000 });
-    const ms = Date.now() - start;
-    console.log(`[保活正常] A机延迟：${ms}ms`);
-  } catch {
-    console.log("[保活异常] 无法连接A机");
-  }
+  } catch {}
 }
 setInterval(autoPing, PING_INTERVAL);
 autoPing();
 
 app.get("/", (req, res) => {
-  res.send("AI真人小姐姐｜联网爬虫｜3分钟自动保活 运行正常");
+  res.send("AI真人小姐姐｜联网爬虫｜防休眠优化 运行正常");
 });
 
 app.post("/api/chat", async (req, res) => {
@@ -115,8 +81,6 @@ app.post("/api/chat", async (req, res) => {
       }
     }
 
-    totalChatCount++;
-
     const aiMessages = [{ role: "system", content: systemPrompt }];
     if (netInfo) {
       aiMessages.push({ role: "user", content: `[联网信息] ${netInfo}\n用户说：${userTxt}` });
@@ -132,8 +96,6 @@ app.post("/api/chat", async (req, res) => {
 
     res.json({ reply: response.message.content || defaultReplyList[Math.floor(Math.random() * defaultReplyList.length)] });
   } catch (e) {
-    errorCount++;
-    console.error("AI生成失败：", e);
     res.json({ reply: defaultReplyList[Math.floor(Math.random() * defaultReplyList.length)] });
   }
 });
