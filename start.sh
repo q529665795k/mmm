@@ -1,38 +1,39 @@
 #!/bin/bash
 set -euo pipefail
 
-# ========== 自动找可写目录 ==========
+# 1. 自动选择Render可写目录（绝对不碰系统）
 if [ -w "/opt/render/project/src" ]; then
-  BASE=/opt/render/project/src/ollama
+  BASE_DIR="/opt/render/project/src/ollama_env"
 elif [ -w "$HOME" ]; then
-  BASE="$HOME/ollama"
+  BASE_DIR="$HOME/ollama_env"
 else
-  BASE="/tmp/ollama"
+  BASE_DIR="/tmp/ollama_env"
 fi
 
-BIN="$BASE/bin"
-MODELS="$BASE/models"
-mkdir -p "$BIN" "$MODELS"
+# 创建全隔离目录（所有文件都在这里，不碰系统）
+mkdir -p "$BASE_DIR/bin" "$BASE_DIR/models" "$BASE_DIR/logs"
 
-# 环境变量全部指向项目内，绝不碰系统
-export OLLAMA_HOME="$BASE"
-export OLLAMA_MODELS="$MODELS"
-export PATH="$BIN:$PATH"
-export OLLAMA_HOST=0.0.0.0
+# 2. 强制隔离环境变量（完全不读取系统配置）
+export OLLAMA_HOME="$BASE_DIR"
+export OLLAMA_MODELS="$BASE_DIR/models"
+export OLLAMA_CONFIG="$BASE_DIR/config"
+export PATH="$BASE_DIR/bin:$PATH"
+export OLLAMA_HOST="0.0.0.0:10000"  # Render强制要求绑定10000端口
 export OLLAMA_ORIGINS="*"
 
-# ========== 下载纯静态二进制（无安装、无root） ==========
-if [ ! -f "$BIN/ollama" ]; then
-  curl -fsSL https://github.com/ollama/ollama/releases/download/v0.1.48/ollama-linux-amd64 -o "$BIN/ollama"
-  chmod +x "$BIN/ollama"
+# 3. 下载【最新有效】静态二进制（修复404）
+OLLAMA_BIN="$BASE_DIR/bin/ollama"
+if [ ! -f "$OLLAMA_BIN" ]; then
+  curl -fsSL https://github.com/ollama/ollama/releases/latest/download/ollama-linux-amd64 -o "$OLLAMA_BIN"
+  chmod +x "$OLLAMA_BIN"
 fi
 
-# ========== 启动服务 ==========
-"$BIN/ollama" serve > "$BASE/serve.log" 2>&1 &
-sleep 5
+# 4. 后台启动（纯用户权限，不碰任何系统服务）
+"$OLLAMA_BIN" serve > "$BASE_DIR/logs/serve.log" 2>&1 &
+sleep 8
 
-# ========== 拉70M小模型（本地目录，不碰系统） ==========
-"$BIN/ollama" pull qwen2:0.5b
+# 5. 拉70M小模型（qwen2:0.5b，完全本地目录）
+"$OLLAMA_BIN" pull qwen2:0.5b
 
-# 保持进程
-tail -f "$BASE/serve.log"
+# 保持进程不退出（Render必备）
+tail -f "$BASE_DIR/logs/serve.log"
