@@ -1,37 +1,38 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-# 1. 自动选可写目录（Render 专属路径优先级）
+# ========== 自动找可写目录 ==========
 if [ -w "/opt/render/project/src" ]; then
-  BASE_DIR="/opt/render/project/src/ollama"
+  BASE=/opt/render/project/src/ollama
 elif [ -w "$HOME" ]; then
-  BASE_DIR="$HOME/ollama"
+  BASE="$HOME/ollama"
 else
-  BASE_DIR="/tmp/ollama"
+  BASE="/tmp/ollama"
 fi
 
-mkdir -p "$BASE_DIR/bin" "$BASE_DIR/models"
-export OLLAMA_HOME="$BASE_DIR"
-export OLLAMA_MODELS="$BASE_DIR/models"
-export PATH="$BASE_DIR/bin:$PATH"
+BIN="$BASE/bin"
+MODELS="$BASE/models"
+mkdir -p "$BIN" "$MODELS"
 
-# 2. 下载 Linux 单文件二进制（不碰 root）
-if [ ! -f "$BASE_DIR/bin/ollama" ]; then
-  curl -fsSL https://ollama.com/install.sh | sh -s -- --no-install
-  mv ./ollama "$BASE_DIR/bin/"
-  chmod +x "$BASE_DIR/bin/ollama"
-fi
-
-# 3. 开放外网访问
+# 环境变量全部指向项目内，绝不碰系统
+export OLLAMA_HOME="$BASE"
+export OLLAMA_MODELS="$MODELS"
+export PATH="$BIN:$PATH"
 export OLLAMA_HOST=0.0.0.0
 export OLLAMA_ORIGINS="*"
 
-# 4. 后台启动服务
-ollama serve > "$BASE_DIR/ollama.log" 2>&1 &
-sleep 6
+# ========== 下载纯静态二进制（无安装、无root） ==========
+if [ ! -f "$BIN/ollama" ]; then
+  curl -fsSL https://github.com/ollama/ollama/releases/download/v0.1.48/ollama-linux-amd64 -o "$BIN/ollama"
+  chmod +x "$BIN/ollama"
+fi
 
-# 5. 拉 70M 级小模型（普通用户权限）
-ollama pull qwen2:0.5b
+# ========== 启动服务 ==========
+"$BIN/ollama" serve > "$BASE/serve.log" 2>&1 &
+sleep 5
 
-# 保持容器不退出
-tail -f "$BASE_DIR/ollama.log"
+# ========== 拉70M小模型（本地目录，不碰系统） ==========
+"$BIN/ollama" pull qwen2:0.5b
+
+# 保持进程
+tail -f "$BASE/serve.log"
