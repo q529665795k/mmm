@@ -93,7 +93,7 @@ app.post("/api/chat", async (req, res) => {
 
     // 极低配置小模型，低配机器也能跑，CPU占用极低
     const aiRes = await axios.post("http://127.0.0.1:11434/api/chat", {
-      model: "qwen:0.2b",
+      model: "qwen:0.5b",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: content }
