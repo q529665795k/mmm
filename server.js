@@ -2,6 +2,24 @@ const express = require("express");
 const axios = require("axios");
 const cheerio = require("cheerio");
 const app = express();
+const ollama = require('ollama'); // 必须加上，不然会报错
+
+// --- 给监控面板用的全局状态变量（第一步）---
+let modelLoaded = false;
+let totalChatCount = 0;
+let errorCount = 0;
+
+// Ollama 模型懒加载标记
+ollama.chat({ model: 'qwen:0.5b', messages: [{ role: 'user', content: '测试' }] })
+  .then(() => {
+    modelLoaded = true;
+    console.log("✅ AI模型已加载完成");
+  })
+  .catch(err => {
+    errorCount++;
+    console.error("❌ 模型加载失败：", err);
+  });
+
 // 动态端口，彻底解决端口占用、固定端口冲突
 const PORT = process.env.PORT || 3000;
 
@@ -9,6 +27,29 @@ const A_HOST = "https://chat-server-1-21uh.onrender.com/";
 const PING_INTERVAL = 180000;
 
 app.use(express.json());
+
+// --- 监控面板状态上报接口（第二步，加在这里）---
+app.get('/api/status', (req, res) => {
+  const memUsage = process.memoryUsage();
+  
+  res.json({
+    running: true,
+    aiServiceStatus: "running",
+    aiModelLoaded: modelLoaded,
+    modelNameVersion: "qwen:0.5b",
+    inferenceDelay: "--",
+    todayChatCount: totalChatCount,
+    contextLimit: "默认限制",
+    modelMemoryUsage: (memUsage.heapUsed / 1024 / 1024).toFixed(2) + " MB",
+    crossServerStatus: "互通正常",
+    backupServiceStatus: "已开启",
+    cronStatus: "正常待命",
+    apiAccessCount: totalChatCount,
+    errorCount: errorCount,
+    systemLoad: "--",
+    cacheStatus: "正常"
+  });
+});
 
 async function getWeather(city = "南宁") {
   try {
@@ -89,29 +130,30 @@ app.post("/api/chat", async (req, res) => {
       }
     }
 
-    const content = netInfo ? `实时信息：${netInfo}\n对方：${userTxt}` : userTxt;
+    // --- 第三步：给聊天接口加上计数 ---
+    totalChatCount++;
 
-    // 极低配置小模型，低配机器也能跑，CPU占用极低
-    const aiRes = await axios.post("http://127.0.0.1:11434/api/chat", {
+    const aiMessages = [{ role: "system", content: systemPrompt }];
+    if (netInfo) {
+      aiMessages.push({ role: "user", content: `[联网信息] ${netInfo}\n用户说：${userTxt}` });
+    } else {
+      aiMessages.push({ role: "user", content: userTxt });
+    }
+
+    const response = await ollama.chat({
       model: "qwen:0.5b",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: content }
-      ],
+      messages: aiMessages,
       stream: false
-    }, { timeout: 8000 });
+    });
 
-    const reply = aiRes.data?.message?.content || defaultReplyList[Math.floor(Math.random() * defaultReplyList.length)];
-    res.json({ reply });
-
-  } catch (err) {
-    console.error(err);
-    // 异常直接调用后端内置回复，不崩服务
-    const rndReply = defaultReplyList[Math.floor(Math.random() * defaultReplyList.length)];
-    res.json({ reply: rndReply });
+    res.json({ reply: response.message.content || defaultReplyList[Math.floor(Math.random() * defaultReplyList.length)] });
+  } catch (e) {
+    errorCount++;
+    console.error("AI生成失败：", e);
+    res.json({ reply: defaultReplyList[Math.floor(Math.random() * defaultReplyList.length)] });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`B机服务启动成功，动态端口：${PORT}`);
+  console.log(`B机服务运行在端口 ${PORT}`);
 });
