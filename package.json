@@ -1,7 +1,1 @@
-{
-  "name": "ollama-render-bridge",
-  "version": "1.0.0",
-  "scripts": {
-    "start": "./start.sh"
-  }
-}
+{"dependencies":{"express":"^4","axios":"^1"},"start":"node server.js"}
