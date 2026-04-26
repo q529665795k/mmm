@@ -82,7 +82,8 @@ app.post("/api/chat", async (req, res) => {
     const content = netInfo ? `实时信息：${netInfo}\n对方：${userTxt}` : userTxt;
 
     const aiRes = await axios.post("http://127.0.0.1:11434/api/chat", {
-      model: "qwen2.5:3b",
+      model: "qwen2.5:1.8b"
+
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content }
