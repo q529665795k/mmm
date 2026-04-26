@@ -1,24 +1,28 @@
-# 用 Ollama 官方镜像作为基础
 FROM ollama/ollama:latest
+RUN apt update && apt install -y nodejs npm curl
+WORKDIR /app
+COPY . .
 
-# 安装 Node.js（适配 Render 的 Node 环境）
-RUN apt-get update && apt-get install -y curl
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-RUN apt-get install -y nodejs
-
-# 拉基础模型
-RUN ollama pull gemma3:270m
-
-# 复制你的人设配置并生成模型
-COPY Modelfile /Modelfile
-RUN ollama create npxj -f /Modelfile
-
-# 复制项目文件
-COPY package.json ./
-COPY start.sh ./
-RUN chmod +x start.sh
-
-# 安装依赖（其实只是为了过构建）
+# 1. 构建时强制拉模型，不拉完不往下走（阻塞式）
+RUN ollama pull tinyllama:1.1b-chat-v0.4-q2_K
+# 2. 生成小姐姐人设
+RUN ollama create girl -f girl.Modelfile
+# 3. 装Node依赖
 RUN npm install
 
-CMD ["npm", "start"]
+EXPOSE 3000
+
+# 启动逻辑：先启Ollama→循环检测就绪→再启接口
+CMD ["sh","-c","\
+ollama serve & \
+sleep 8 && \
+for i in {1..15}; do \
+  if curl -s http://127.0.0.1:11434/api/tags >/dev/null; then \
+    echo '✅ 模型加载完成，接口启动'; \
+    break; \
+  fi; \
+  echo '⏳ 等待模型加载...'; \
+  sleep 4; \
+done; \
+node server.js\
+"]
