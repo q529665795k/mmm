@@ -1,7 +1,0 @@
-services:
-  - type: web
-    name: ollama-only
-    env: docker
-    dockerfilePath: ./Dockerfile
-    startCommand: /start.sh
-    plan: free
