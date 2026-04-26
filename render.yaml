@@ -3,8 +3,7 @@ services:
     name: ollama-b-server
     env: docker
     dockerfilePath: ./Dockerfile
-    # 改成我们带延时、等模型的启动脚本
-    startCommand: ./start.sh
+    startCommand: /start.sh
     envVars:
       - key: OLLAMA_HOST
         value: 0.0.0.0:11434
