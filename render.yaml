@@ -1,13 +1,6 @@
 services:
   - type: web
-    name: ollama-b-server
     env: docker
     dockerfilePath: ./Dockerfile
     startCommand: /start.sh
-    envVars:
-      - key: OLLAMA_HOST
-        value: 0.0.0.0:11434
-      - key: PORT
-        value: 11434
     plan: free
-    autoDeploy: true
