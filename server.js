@@ -88,7 +88,7 @@ app.post("/api/chat", async (req, res) => {
 
     // -------------------------- OLLAMA 调用已加入（0.5接口）--------------------------
     const ollamaRes = await axios.post("http://127.0.0.1:11434/api/chat", {
-      model: "qwen:0.5b",
+      model: "gemma3:270m",
       messages: [
         { role: "system", content: systemPrompt + "\n" + netInfo },
         { role: "user", content: userTxt }
