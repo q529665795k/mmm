@@ -1,5 +1,10 @@
 {
-  "name":"ai-model-server",
-  "dependencies":{"express":"^4","axios":"^1"},
-  "start":"node server.js"
+  "name": "ai-girl-server",
+  "dependencies": {
+    "express": "^4",
+    "axios": "^1"
+  },
+  "scripts": {
+    "start": "bash start.sh"
+  }
 }
