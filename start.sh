@@ -1,29 +1,35 @@
 #!/bin/bash
 set -e
 
-# ========== 1. 强制用Render有权限的用户目录，绝不碰系统 ==========
-BIN_DIR="$HOME/.local/bin"
-mkdir -p "$BIN_DIR"
-export PATH="$BIN_DIR:$PATH"
+# 1. 自动找一个可写目录（优先级：src > tmp > home）
+if [ -w "/opt/render/project/src" ]; then
+  BASE_DIR="/opt/render/project/src/ollama"
+elif [ -w "/tmp" ]; then
+  BASE_DIR="/tmp/ollama"
+else
+  BASE_DIR="$HOME/ollama"
+fi
 
-# ========== 2. 【修复404！！】用官方最新正确链接，下载压缩包 ==========
-# 旧链接是ollama-linux-amd64（404），新链接是ollama-linux-amd64.tgz！！
-curl -fsSL https://ollama.com/download/ollama-linux-amd64.tgz -o ollama.tgz
+mkdir -p "$BASE_DIR/bin"
+export OLLAMA_HOME="$BASE_DIR"
+export OLLAMA_MODELS="$BASE_DIR/models"
+export PATH="$BASE_DIR/bin:$PATH"
 
-# ========== 3. 解压到用户目录，全程不用ROOT ==========
-tar -xzf ollama.tgz -C "$BIN_DIR" --strip-components 1
-chmod +x "$BIN_DIR/ollama"
+# 2. 普通用户安装 Ollama（不碰 root）
+if ! command -v ollama &> /dev/null; then
+  curl -fsSL https://ollama.com/install.sh | sh -s -- --user
+fi
 
-# ========== 4. 全网开放配置 ==========
+# 3. 配置允许外网访问
 export OLLAMA_HOST=0.0.0.0
-export OLLAMA_ORIGINS=*
+export OLLAMA_ORIGINS="*"
 
-# ========== 5. 后台静默启动 ==========
-"$BIN_DIR/ollama" serve &
-sleep 15
+# 4. 后台启动服务
+ollama serve > "$BASE_DIR/ollama.log" 2>&1 &
+sleep 5
 
-# ========== 6. 【就这一个！！】全自动下载qwen2:0.5b（70多兆） ==========
-"$BIN_DIR/ollama" pull qwen2:0.5b
+# 5. 自动拉 70M 小模型（普通用户权限）
+ollama pull qwen2:0.5b
 
-# ========== 7. 永久保活 ==========
-tail -f /dev/null
+# 保持进程不退出
+tail -f "$BASE_DIR/ollama.log"
