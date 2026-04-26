@@ -3,7 +3,6 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const app = express();
 
-
 // 动态端口，彻底解决端口占用、固定端口冲突
 const PORT = process.env.PORT || 3000;
 
@@ -90,3 +89,16 @@ app.post("/api/chat", async (req, res) => {
         netInfo = "现在：" + new Date().toLocaleString("zh-CN");
       }
     }
+
+    // 这里先给你用兜底回复，你等Ollama那边模型下好，我再帮你改成调用38.165.47.21:11434的接口
+    const randomReply = defaultReplyList[Math.floor(Math.random() * defaultReplyList.length)];
+    res.json({ reply: randomReply });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ reply: "哎呀，服务器有点卡，再发我一次呗～" });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`服务器已启动，端口：${PORT}`);
+});
