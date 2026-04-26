@@ -1,3 +1,5 @@
 FROM ollama/ollama:latest
-RUN ollama pull qwen:0.5b
-CMD ["ollama", "serve"]
+# 预拉取 gemma3:270m 模型（约292MB）
+RUN ollama pull gemma3:270m
+# 用我们的优化脚本启动
+CMD ["./start.sh"]
