@@ -1,0 +1,11 @@
+name = "socks5-proxy"
+main = "index.js"
+compatibility_date = "2025-05-15"
+
+# 绑定代理核心（必须和代码里名字完全一致！！）
+[[durable_objects.bindings]]
+name = "SOCKS_DO"
+class_name = "SOCKS_DO"
+
+# 开启网络权限（代理必须要！！）
+compatibility_flags = ["nodejs_compat"]
