@@ -1,6 +1,6 @@
-name = "socks5-proxy"
+name = "proud-boat-4fb8"
 main = "index.js"
-compatibility_date = "2025-05-15"
+compatibility_date = "2026-04-15"
 
 # 绑定代理核心（必须和代码里名字完全一致！！）
 [[durable_objects.bindings]]
