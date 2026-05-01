@@ -1,4 +1,4 @@
-export default {
+ export default {
   async fetch(request, env) {
     const upgrade = request.headers.get("Upgrade");
     if (!upgrade || upgrade !== "websocket") {
