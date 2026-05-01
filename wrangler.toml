@@ -2,13 +2,3 @@ name = "socks5-proxy"
 main = "index.js"
 compatibility_date = "2025-05-15"
 compatibility_flags = ["nodejs_compat"]
-
-# Durable Object绑定
-[[durable_objects.bindings]]
-name = "SOCKS_DO"
-class_name = "SOCKS_DO"
-
-# 【关键修复】DO迁移配置（必须加！）
-[[migrations]]
-tag = "v1"
-new_sqlite_classes = ["SOCKS_DO"]
