@@ -1,4 +1,4 @@
-name = "socks5-proxy"
+name = "proud-boat-4fb8"
 main = "index.js"
 compatibility_date = "2025-05-15"
 compatibility_flags = ["nodejs_compat"]
